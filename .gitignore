@@ -17,3 +17,6 @@ poetry.lock
 
 # IPython
 .ipynb_checkpoints/
+
+# Local files
+*.local
