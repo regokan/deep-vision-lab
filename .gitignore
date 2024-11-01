@@ -1,0 +1,19 @@
+##### Development #####
+
+# DS Store
+.DS_Store
+
+# Pycache
+__pycache__/
+
+# Python virtual environment
+.venv/
+
+# Poetry lock file
+poetry.lock
+
+# Python environment
+.python-version
+
+# IPython
+.ipynb_checkpoints/
