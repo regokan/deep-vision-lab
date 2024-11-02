@@ -6,6 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 import torch.utils.data
+from torch.utils.data import SubsetRandomSampler
 from torchvision import datasets
 from torchvision import transforms as T
 
@@ -36,16 +37,14 @@ def get_data_loaders(
     :return a dictionary with 3 keys: 'train_one_epoch', 'valid' and 'test' containing respectively the
             train_one_epoch, validation and test data loaders
     """
-
     if num_workers == -1:
         # Use all cores
         num_workers = multiprocessing.cpu_count()
 
-    # We will fill this up later
-    data_loaders = {"train": None, "valid": None, "test": None}
-
     base_path = Path(get_data_location())
+    root_dir = os.path.join(base_path, "landmark_images")
 
+    # Initial data transformation
     initial_transform = T.Compose(
         [
             T.Resize(256),
@@ -54,8 +53,8 @@ def get_data_loaders(
             T.ToTensor(),
         ]
     )
-    root_dir = os.path.join(base_path, "landmark_images")
 
+    # Load datasets
     dataset_wrapper = DatasetWrapper(
         root=root_dir,
         train_transform=initial_transform,
@@ -84,24 +83,14 @@ def get_data_loaders(
             ]
         ),
         "valid": T.Compose(
-            [
-                T.Resize(256),
-                T.CenterCrop(224),
-                T.ToTensor(),
-                T.Normalize(mean, std),
-            ]
+            [T.Resize(256), T.CenterCrop(224), T.ToTensor(), T.Normalize(mean, std)]
         ),
         "test": T.Compose(
-            [
-                T.Resize(256),
-                T.CenterCrop(224),
-                T.ToTensor(),
-                T.Normalize(mean, std),
-            ]
+            [T.Resize(256), T.CenterCrop(224), T.ToTensor(), T.Normalize(mean, std)]
         ),
     }
 
-    # Create train and validation datasets
+    # Apply transforms to datasets
     data = DatasetWrapper(
         root=root_dir,
         train_transform=data_transforms["train"],
@@ -112,50 +101,46 @@ def get_data_loaders(
     )
     train_data, valid_data, test_data = data.get_datasets()
 
-    # obtain training indices that will be used for validation
-    n_tot = len(train_data)
-    indices = torch.randperm(n_tot)
-
-    # If requested, limit the number of data points to consider
-    if limit > 0:
-        indices = indices[:limit]
-        n_tot = limit
-
-    split = int(math.ceil(valid_size * n_tot))
-    train_idx, valid_idx = indices[split:], indices[:split]
-
-    # define samplers for obtaining training and validation batches
-    train_sampler = torch.utils.data.SubsetRandomSampler(train_idx)
-    valid_sampler = torch.utils.data.SubsetRandomSampler(valid_idx)
-
-    # prepare data loaders
-    data_loaders["train"] = DataLoaderWrapper(
-        dataset=train_data,
-        batch_size=batch_size,
-        sampler=train_sampler,
-        num_workers=num_workers,
-    ).get_loader()
-
-    data_loaders["valid"] = DataLoaderWrapper(
-        dataset=valid_data,
-        batch_size=batch_size,
-        sampler=valid_sampler,
-        num_workers=num_workers,
-    ).get_loader()
+    # Get lengths and validate limit usage
+    n_train = len(train_data)
+    n_valid = len(valid_data)
+    n_test = len(test_data)
 
     if limit > 0:
-        indices = torch.arange(limit)
-        test_sampler = torch.utils.data.SubsetRandomSampler(indices)
-    else:
-        test_sampler = None
+        n_train = min(n_train, limit)
+        n_valid = min(n_valid, limit)
+        n_test = min(n_test, limit)
 
-    data_loaders["test"] = DataLoaderWrapper(
-        dataset=test_data,
-        batch_size=batch_size,
-        sampler=test_sampler,
-        num_workers=num_workers,
-        shuffle=False,
-    ).get_loader()
+    # Define samplers for train/validation datasets
+    train_indices = torch.randperm(n_train).tolist()
+    valid_indices = torch.randperm(n_valid).tolist()
+
+    # Use samplers within dataset limits
+    train_sampler = SubsetRandomSampler(train_indices[:n_train])
+    valid_sampler = SubsetRandomSampler(valid_indices[:n_valid])
+
+    # Initialize DataLoaders with debug info
+    data_loaders = {
+        "train": DataLoaderWrapper(
+            train_data,
+            batch_size=batch_size,
+            sampler=train_sampler,
+            num_workers=num_workers,
+        ).get_loader(),
+        "valid": DataLoaderWrapper(
+            valid_data,
+            batch_size=batch_size,
+            sampler=valid_sampler,
+            num_workers=num_workers,
+        ).get_loader(),
+        "test": DataLoaderWrapper(
+            test_data, batch_size=batch_size, num_workers=num_workers, shuffle=False
+        ).get_loader(),
+    }
+
+    print(
+        f"Training set size: {n_train}, Validation set size: {n_valid}, Test set size: {n_test}"
+    )
 
     return data_loaders
 
