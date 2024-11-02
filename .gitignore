@@ -20,3 +20,6 @@ poetry.lock
 
 # Local files
 *.local
+
+# Checkpoints
+checkpoints/
