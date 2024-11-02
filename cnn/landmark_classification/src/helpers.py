@@ -3,6 +3,8 @@ import urllib.request
 from io import BytesIO
 from zipfile import ZipFile
 
+import matplotlib.pyplot as plt
+
 
 def get_data_location():
     """
@@ -34,6 +36,16 @@ def download_and_extract(
             "Dataset already downloaded. If you need to re-download, "
             f"please delete the directory {location}"
         )
+
+
+def after_subplot(ax: plt.Axes, group_name: str, x_label: str):
+    """Add title xlabel and legend to single chart"""
+    ax.set_title(group_name)
+    ax.set_xlabel(x_label)
+    ax.legend(loc="center right")
+
+    if group_name.lower() == "loss":
+        ax.set_ylim([None, 4.5])
 
 
 if __name__ == "__main__":
