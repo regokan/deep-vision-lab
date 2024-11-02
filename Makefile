@@ -7,3 +7,5 @@ install:
 format:
 	poetry run python -m isort .
 	poetry run python -m black .
+test:
+	PYTHONPATH=./ poetry run python -m pytest -vv
