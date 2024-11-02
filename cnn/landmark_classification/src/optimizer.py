@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim
 
-from optimize import OptimizerWrapper
 from criterion import CriterionWrapper
+from optimize import OptimizerWrapper
 from utils.device import get_device
 
 device = get_device()
@@ -26,7 +26,6 @@ def get_optimizer(
     learning_rate: float = 0.01,
     momentum: float = 0.5,
     weight_decay: float = 0,
-    device: str = device,
 ):
     """
     Returns an optimizer instance
@@ -56,4 +55,4 @@ def get_optimizer(
     else:
         raise ValueError(f"Optimizer {optimizer} not supported")
 
-    return opt.get_optimizer().to(device)
+    return opt.get_optimizer()
