@@ -1,5 +1,5 @@
-import torch
 import pytest
+import torch
 
 from cnn.landmark_classification.src.model import MyModel
 
