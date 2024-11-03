@@ -9,14 +9,18 @@ from utils.device import get_device
 device = get_device()
 
 
-def get_loss(device: str = device):
+def get_loss(device: str = device, **kwargs):
     """
     Get an instance of the CrossEntropyLoss (useful for classification)
 
     :param device: the device to move the loss to, default to best available
     """
     # Select CrossEntropyLoss, appropriate for classification tasks
-    loss = CriterionWrapper(criterion_name="cross_entropy").get_criterion().to(device)
+    loss = (
+        CriterionWrapper(criterion_name="cross_entropy", **kwargs)
+        .get_criterion()
+        .to(device)
+    )
     return loss
 
 
@@ -25,7 +29,9 @@ def get_optimizer(
     optimizer: str = "SGD",
     learning_rate: float = 0.01,
     momentum: float = 0.5,
+    betas: tuple = (0.9, 0.999),
     weight_decay: float = 0,
+    **kwargs,
 ):
     """
     Returns an optimizer instance
@@ -45,12 +51,18 @@ def get_optimizer(
             lr=learning_rate,
             weight_decay=weight_decay,
             momentum=momentum,
+            **kwargs,
         )
 
     elif optimizer.lower() == "adam":
         # Create an instance of the Adam optimizer
         opt = OptimizerWrapper(
-            model, optimizer_name="Adam", lr=learning_rate, weight_decay=weight_decay
+            model,
+            optimizer_name="Adam",
+            lr=learning_rate,
+            weight_decay=weight_decay,
+            betas=betas,
+            **kwargs,
         )
     else:
         raise ValueError(f"Optimizer {optimizer} not supported")
