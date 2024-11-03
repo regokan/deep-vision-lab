@@ -37,9 +37,10 @@ def optimize(
     n_epochs,
     save_path,
     interactive_tracking=False,
+    early_stopping_patience=5,  # Number of epochs with no improvement after which training will be stopped
 ):
     """
-    Optimizes the model using CNNTrainer.
+    Optimizes the model using CNNTrainer with optional early stopping.
     """
     # Initialize interactive tracking, if enabled
     if interactive_tracking:
@@ -49,6 +50,7 @@ def optimize(
 
     logs = {}
     valid_loss_min = None
+    epochs_no_improve = 0  # Counter for early stopping
 
     # Learning rate scheduler that reduces learning rate on plateau
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -69,16 +71,29 @@ def optimize(
             f"Epoch: {epoch} \tTraining Loss: {train_loss:.6f} \tValidation Loss: {valid_loss:.6f}"
         )
 
-        # Save the model if validation loss has decreased by more than 1%
+        # Check if validation loss improved
         if (
             valid_loss_min is None
             or (valid_loss_min - valid_loss) / valid_loss_min > 0.01
         ):
+            # Save model if improvement in validation loss
             print(f"New minimum validation loss: {valid_loss:.6f}. Saving model ...")
             torch.save(model.state_dict(), save_path)
             valid_loss_min = valid_loss
+            epochs_no_improve = 0  # Reset the counter if there's an improvement
+        else:
+            # No improvement in validation loss
+            epochs_no_improve += 1
+            print(f"No improvement for {epochs_no_improve} epochs.")
 
-        # Update learning rate
+            # Early stopping condition
+            if epochs_no_improve >= early_stopping_patience:
+                print(
+                    f"Early stopping triggered after {epochs_no_improve} epochs of no improvement."
+                )
+                break
+
+        # Update learning rate based on validation loss
         scheduler.step(valid_loss)
 
         # Log losses and current learning rate for interactive tracking
