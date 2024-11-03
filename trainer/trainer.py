@@ -29,8 +29,8 @@ class Trainer(ABC):
         """Define loss computation, to be implemented by subclasses."""
         pass
 
-    def train_one_epoch(self):
-        """Train the model for one epoch."""
+    def train_one_epoch(self, clip_value=None):
+        """Train the model for one epoch with optional gradient clipping."""
         self.model.train()
         running_loss = 0.0
         for inputs, labels in self.train_loader:
@@ -43,6 +43,11 @@ class Trainer(ABC):
             # Backward pass and optimization
             self.optimizer.zero_grad()
             loss.backward()
+
+            # Apply gradient clipping
+            if clip_value is not None:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), clip_value)
+
             self.optimizer.step()
             running_loss += loss.item() * inputs.size(0)
 

@@ -38,6 +38,7 @@ def optimize(
     save_path,
     interactive_tracking=False,
     early_stopping_patience=5,  # Number of epochs with no improvement after which training will be stopped
+    clip_value=None,
 ):
     """
     Optimizes the model using CNNTrainer with optional early stopping.
@@ -63,7 +64,9 @@ def optimize(
     )
 
     for epoch in range(1, n_epochs + 1):
-        train_loss = trainer.train_one_epoch()  # Train for one epoch
+        train_loss = trainer.train_one_epoch(
+            clip_value=clip_value
+        )  # Train for one epoch
         valid_loss, _ = trainer.validate()  # Validate and get loss
 
         # Print training/validation statistics
