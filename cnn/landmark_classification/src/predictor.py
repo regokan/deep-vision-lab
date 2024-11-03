@@ -46,7 +46,8 @@ def predictor_test(test_dataloader, model_reloaded):
 
     folder = get_data_location()
     test_data = datasets.ImageFolder(
-        os.path.join(folder, "test"), transform=T.ToTensor()
+        os.path.join(folder, "landmark_images", "test"),
+        transform=T.ToTensor(),
     )
 
     pred = []
