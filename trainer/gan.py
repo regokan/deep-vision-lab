@@ -1,7 +1,9 @@
+from datetime import datetime
+
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-from datetime import datetime
-import matplotlib.pyplot as plt
+
 
 class GANTrainer:
     def __init__(
@@ -92,7 +94,7 @@ class GANTrainer:
 
             # Print losses periodically
             if batch_i % print_every == 0:
-                time = str(datetime.now()).split('.')[0]
+                time = str(datetime.now()).split(".")[0]
                 print(
                     f"{time} | Batch {batch_i}/{len(self.train_loader)} | "
                     f"d_loss: {d_loss.item():.4f} | g_loss: {g_loss.item():.4f}"
@@ -103,7 +105,9 @@ class GANTrainer:
 
         return total_g_loss / len(self.train_loader)
 
-    def train(self, num_epochs, print_every=100, smooth=False, patience=5, view_samples=False):
+    def train(
+        self, num_epochs, print_every=100, smooth=False, patience=5, view_samples=False
+    ):
         """Train the GAN for multiple epochs, with optional label smoothing and early stopping."""
         for epoch in range(num_epochs):
             avg_g_loss = self.train_one_epoch(print_every=print_every, smooth=smooth)
@@ -124,7 +128,7 @@ class GANTrainer:
                 samples_z = self.generator(self.fixed_z)
                 self.samples.append(samples_z)
             self.generator.train()  # Back to train mode
-            
+
             if view_samples:
                 # Display generated samples after each epoch
                 self.view_samples(-1)
@@ -144,9 +148,7 @@ class GANTrainer:
         """Displays generated images from the samples list for a specific epoch."""
         if len(samples) == 0:
             samples = self.samples[epoch].cpu().detach()
-        fig, axes = plt.subplots(
-            1, self.sample_size, figsize=(self.sample_size, 1)
-        )
+        fig, axes = plt.subplots(1, self.sample_size, figsize=(self.sample_size, 1))
         for img, ax in zip(samples, axes):
             ax.imshow(img.view(28, 28), cmap="gray")
             ax.axis("off")

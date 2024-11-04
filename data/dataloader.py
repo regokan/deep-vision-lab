@@ -80,7 +80,7 @@ class DataLoaderWrapper:
 
         for i in range(num_images):
             row, col = divmod(i, grid_size[1])
-            
+
             # Convert image for display
             img = images[i].permute(1, 2, 0).cpu().numpy()
             img = (img - img.min()) / (img.max() - img.min())  # Normalize to [0, 1]
