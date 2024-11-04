@@ -16,6 +16,7 @@ class GANTrainer:
         z_size,
         device="cpu",
         sample_size=16,
+        is_conv=False,
     ):
         self.generator = generator.to(device)
         self.discriminator = discriminator.to(device)
@@ -30,6 +31,7 @@ class GANTrainer:
         self.samples = []
         self.best_g_loss = float("inf")
         self.early_stopping_counter = 0
+        self.is_conv = is_conv
 
     def real_loss(self, D_out, smooth=False):
         batch_size = D_out.size(0)
@@ -60,7 +62,10 @@ class GANTrainer:
             self.d_optimizer.zero_grad()
 
             # Train on real images
-            d_output_real = self.discriminator(real_images.view(batch_size, -1))
+            if self.is_conv:
+                d_output_real = self.discriminator(real_images)
+            else:
+                d_output_real = self.discriminator(real_images.view(batch_size, -1))
             d_loss_real = self.real_loss(d_output_real, smooth=smooth)
 
             # Train on fake images
