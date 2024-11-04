@@ -26,6 +26,8 @@ class GANTrainer:
         self.fixed_z = torch.randn(sample_size, z_size, device=device)
         self.losses = []
         self.samples = []
+        self.best_g_loss = float("inf")
+        self.early_stopping_counter = 0
 
     def real_loss(self, D_out, smooth=False):
         batch_size = D_out.size(0)
@@ -43,6 +45,8 @@ class GANTrainer:
         """Train the GAN for one epoch with optional label smoothing."""
         self.generator.train()
         self.discriminator.train()
+
+        total_g_loss = 0
 
         for batch_i, (real_images, _) in enumerate(self.train_loader):
             batch_size = real_images.size(0)
@@ -83,6 +87,9 @@ class GANTrainer:
             g_loss.backward()
             self.g_optimizer.step()
 
+            # Accumulate generator loss for early stopping
+            total_g_loss += g_loss.item()
+
             # Print losses periodically
             if batch_i % print_every == 0:
                 time = str(datetime.now()).split('.')[0]
@@ -94,11 +101,22 @@ class GANTrainer:
             # Store the losses for plotting
             self.losses.append((d_loss.item(), g_loss.item()))
 
-    def train(self, num_epochs, print_every=100, smooth=False, view_samples=False):
-        """Train the GAN for multiple epochs, with optional label smoothing."""
+        return total_g_loss / len(self.train_loader)
+
+    def train(self, num_epochs, print_every=100, smooth=False, patience=5, view_samples=False):
+        """Train the GAN for multiple epochs, with optional label smoothing and early stopping."""
         for epoch in range(num_epochs):
-            print(f"Epoch {epoch+1}/{num_epochs}")
-            self.train_one_epoch(print_every=print_every, smooth=smooth)
+            avg_g_loss = self.train_one_epoch(print_every=print_every, smooth=smooth)
+
+            # Early stopping check
+            if avg_g_loss < self.best_g_loss:
+                self.best_g_loss = avg_g_loss
+                self.early_stopping_counter = 0
+            else:
+                self.early_stopping_counter += 1
+
+            if self.early_stopping_counter >= patience:
+                break
 
             # Generate samples for visualization
             self.generator.eval()  # Eval mode for generating samples
@@ -132,4 +150,4 @@ class GANTrainer:
         for img, ax in zip(samples, axes):
             ax.imshow(img.view(28, 28), cmap="gray")
             ax.axis("off")
-        fig.show()
+        plt.show()
