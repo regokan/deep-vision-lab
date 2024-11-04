@@ -66,23 +66,29 @@ class DataLoaderWrapper:
         self, num_images: int = 16, grid_size: Tuple[int, int] = (4, 4)
     ) -> None:
         """
-        Displays a grid of sample images from the DataLoader.
+        Displays a grid of sample images from the DataLoader along with their labels.
 
         Args:
             num_images (int): Number of images to display.
             grid_size (tuple): Grid size for displaying images (rows, cols).
         """
-        # Fetch a batch of images
-        images, _ = next(iter(self.data_loader))
+        # Fetch a batch of images and labels
+        images, labels = next(iter(self.data_loader))
 
-        # Create a grid of images
-        grid_img = vutils.make_grid(
-            images[:num_images], nrow=grid_size[1], padding=2, normalize=True
-        )
+        # Calculate the number of rows and columns for subplots
+        fig, axes = plt.subplots(grid_size[0], grid_size[1], figsize=(10, 10))
 
-        # Plot using imshow
-        plt.figure(figsize=(10, 10))
-        plt.imshow(grid_img.permute(1, 2, 0).cpu().numpy())
-        plt.axis("off")
-        plt.title("Sample Images from DataLoader")
+        for i in range(num_images):
+            row, col = divmod(i, grid_size[1])
+            
+            # Convert image for display
+            img = images[i].permute(1, 2, 0).cpu().numpy()
+            img = (img - img.min()) / (img.max() - img.min())  # Normalize to [0, 1]
+
+            # Display image and label
+            axes[row, col].imshow(img)
+            axes[row, col].set_title(f"Label: {labels[i].item()}")
+            axes[row, col].axis("off")
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to fit title
         plt.show()
