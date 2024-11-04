@@ -47,8 +47,11 @@ class GANTrainer:
         criterion = nn.BCEWithLogitsLoss()
         return criterion(D_out.squeeze(), labels)
 
-    def train_one_epoch(self, print_every=100, smooth=False):
-        """Train the GAN for one epoch with optional label smoothing."""
+    def train_one_epoch(self, print_every=100, smooth=False, g_updates=1):
+        """
+        Train the GAN for one epoch with optional label smoothing and
+        configurable generator update frequency.
+        """
         self.generator.train()
         self.discriminator.train()
 
@@ -84,27 +87,30 @@ class GANTrainer:
             # =========================================
             #            TRAIN THE GENERATOR
             # =========================================
-            self.g_optimizer.zero_grad()
+            # Train the generator multiple times
+            g_loss = 0  # Reset generator loss for averaging
+            for _ in range(g_updates):
+                self.g_optimizer.zero_grad()
 
-            # Generate fake images and compute generator loss
-            z = torch.randn(batch_size, self.z_size, device=self.device)
-            fake_images = self.generator(z)
-            g_output = self.discriminator(fake_images)
-            g_loss = self.real_loss(g_output)  # We want D(G(z)) close to 1
+                # Generate fake images and compute generator loss
+                z = torch.randn(batch_size, self.z_size, device=self.device)
+                fake_images = self.generator(z)
+                g_output = self.discriminator(fake_images)
+                g_loss = self.real_loss(g_output)  # We want D(G(z)) close to 1
 
-            # Backward pass and optimization for generator
-            g_loss.backward()
-            self.g_optimizer.step()
+                # Backward pass and optimization for generator
+                g_loss.backward()
+                self.g_optimizer.step()
 
             # Accumulate generator loss for early stopping
             total_g_loss += g_loss.item()
 
             # Print losses periodically
             if batch_i % print_every == 0:
-                time = str(datetime.now()).split(".")[0]
+                time = str(datetime.now()).split(".", maxsplit=1)[0]
                 print(
                     f"{time} | Batch {batch_i}/{len(self.train_loader)} | "
-                    f"d_loss: {d_loss.item():.4f} | g_loss: {g_loss.item():.4f}"
+                    f"d_loss: {d_loss.item():.4f} | g_loss: {g_loss.item():.4f} (after {g_updates} updates)"
                 )
 
             # Store the losses for plotting
@@ -155,7 +161,7 @@ class GANTrainer:
         """Displays generated images from the samples list for a specific epoch."""
         if len(samples) == 0:
             samples = self.samples[epoch].cpu().detach()
-            
+
         # Scale the images from [-1, 1] to [0, 1] if necessary
         samples = (samples + 1) / 2  # This assumes samples are in [-1, 1]
 
