@@ -17,6 +17,7 @@ class GANTrainer:
         device="cpu",
         sample_size=16,
         is_conv=False,
+        image_shape=(28, 28),
     ):
         self.generator = generator.to(device)
         self.discriminator = discriminator.to(device)
@@ -32,6 +33,7 @@ class GANTrainer:
         self.best_g_loss = float("inf")
         self.early_stopping_counter = 0
         self.is_conv = is_conv
+        self.image_shape = image_shape
 
     def real_loss(self, D_out, smooth=False):
         batch_size = D_out.size(0)
@@ -153,8 +155,13 @@ class GANTrainer:
         """Displays generated images from the samples list for a specific epoch."""
         if len(samples) == 0:
             samples = self.samples[epoch].cpu().detach()
+            
+        # Scale the images from [-1, 1] to [0, 1] if necessary
+        samples = (samples + 1) / 2  # This assumes samples are in [-1, 1]
+
         fig, axes = plt.subplots(1, self.sample_size, figsize=(self.sample_size, 1))
         for img, ax in zip(samples, axes):
-            ax.imshow(img.view(28, 28), cmap="gray")
+            # Reshape the image and display without cmap for RGB
+            ax.imshow(img.view(*self.image_shape))
             ax.axis("off")
         plt.show()
