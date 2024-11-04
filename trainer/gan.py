@@ -35,22 +35,63 @@ class GANTrainer:
         self.is_conv = is_conv
         self.image_shape = image_shape
 
-    def real_loss(self, D_out, smooth=False):
+    def noisy_labels(self, labels, noise_factor=0.1):
+        """
+        Adds Gaussian noise to labels to introduce uncertainty for the discriminator.
+        Parameters:
+            labels (Tensor): The original labels (1 for real, 0 for fake).
+            noise_factor (float): The amount of noise to add (0.1 is common).
+        """
+        return labels + noise_factor * torch.randn_like(labels)
+
+    def add_instance_noise(self, images, noise_factor=0.1):
+        """
+        Adds Gaussian noise to images (real or fake) to introduce instance noise.
+        Parameters:
+            images (Tensor): The original images (real or fake).
+            noise_factor (float): The amount of noise to add (0.1 is common).
+        """
+        return images + noise_factor * torch.randn_like(images)
+
+    def real_loss(self, D_out, smooth=False, label_noise=0.0):
+        """
+        Computes the real loss, with optional label smoothing and label noise.
+        """
         batch_size = D_out.size(0)
         labels = torch.ones(batch_size, device=self.device) * (0.9 if smooth else 1.0)
+
+        # Add label noise if specified
+        if label_noise > 0:
+            labels = labels + label_noise * torch.randn_like(labels)
+
         criterion = nn.BCEWithLogitsLoss()
         return criterion(D_out.squeeze(), labels)
 
-    def fake_loss(self, D_out):
+    def fake_loss(self, D_out, label_noise=0.0):
+        """
+        Computes the fake loss with optional label noise.
+        """
         batch_size = D_out.size(0)
         labels = torch.zeros(batch_size, device=self.device)
+
+        # Add label noise if specified
+        if label_noise > 0:
+            labels = labels + label_noise * torch.randn_like(labels)
+
         criterion = nn.BCEWithLogitsLoss()
         return criterion(D_out.squeeze(), labels)
 
-    def train_one_epoch(self, print_every=100, smooth=False, g_updates=1):
+    def train_one_epoch(
+        self,
+        print_every=100,
+        smooth=False,
+        g_updates=1,
+        label_noise=0,
+        instance_noise=0,
+    ):
         """
-        Train the GAN for one epoch with optional label smoothing and
-        configurable generator update frequency.
+        Train the GAN for one epoch with optional label smoothing, configurable generator update frequency,
+        label noise, and instance noise.
         """
         self.generator.train()
         self.discriminator.train()
@@ -61,23 +102,37 @@ class GANTrainer:
             batch_size = real_images.size(0)
             real_images = real_images.to(self.device) * 2 - 1  # Rescale to [-1, 1]
 
+            # Add instance noise to real images
+            if instance_noise > 0:
+                real_images = self.add_instance_noise(
+                    real_images, noise_factor=instance_noise
+                )
+
             # ============================================
             #            TRAIN THE DISCRIMINATOR
             # ============================================
             self.d_optimizer.zero_grad()
 
-            # Train on real images
+            # Train on real images with real loss
             if self.is_conv:
                 d_output_real = self.discriminator(real_images)
             else:
                 d_output_real = self.discriminator(real_images.view(batch_size, -1))
-            d_loss_real = self.real_loss(d_output_real, smooth=smooth)
+            d_loss_real = self.real_loss(
+                d_output_real, smooth=smooth, label_noise=label_noise
+            )
 
-            # Train on fake images
+            # Generate fake images and add instance noise if needed
             z = torch.randn(batch_size, self.z_size, device=self.device)
             fake_images = self.generator(z)
+            if instance_noise > 0:
+                fake_images = self.add_instance_noise(
+                    fake_images, noise_factor=instance_noise
+                )
+
+            # Train on fake images with fake loss
             d_output_fake = self.discriminator(fake_images.detach())
-            d_loss_fake = self.fake_loss(d_output_fake)
+            d_loss_fake = self.fake_loss(d_output_fake, label_noise=label_noise)
 
             # Total discriminator loss and backward pass
             d_loss = d_loss_real + d_loss_fake
@@ -119,11 +174,25 @@ class GANTrainer:
         return total_g_loss / len(self.train_loader)
 
     def train(
-        self, num_epochs, print_every=100, smooth=False, patience=5, view_samples=False
+        self,
+        num_epochs,
+        print_every=100,
+        smooth=False,
+        patience=5,
+        view_samples=False,
+        g_updates=1,
+        label_noise=0,
+        instance_noise=0,
     ):
         """Train the GAN for multiple epochs, with optional label smoothing and early stopping."""
         for epoch in range(num_epochs):
-            avg_g_loss = self.train_one_epoch(print_every=print_every, smooth=smooth)
+            avg_g_loss = self.train_one_epoch(
+                print_every=print_every,
+                smooth=smooth,
+                g_updates=g_updates,
+                label_noise=label_noise,
+                instance_noise=instance_noise,
+            )
 
             # Early stopping check
             if avg_g_loss < self.best_g_loss:
