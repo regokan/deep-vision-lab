@@ -21,11 +21,17 @@ poetry.lock
 # Local files
 *.local
 
+# ZIP files
+*.zip
+
 # Checkpoints
 checkpoints/
 
 # PEM files
 *.pem
+
+# CelebA dataset
+processed_celeba_small/
 
 ####### Terraform #######
 
